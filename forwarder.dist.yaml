@@ -1,0 +1,2 @@
+cluster-name: 
+  - { cmd: kubectl, args: [port-forward, --context, contxt-name, -n, namespace-name, app, port:port] }
