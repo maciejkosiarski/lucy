@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  application:
+    image: ${IMAGE_DEV}
+    container_name: ${APP_NAME}-dev
+    restart: on-failure
+    working_dir: /go/src/${APP_NAME}
+    environment:
+      - APP_ENV=development
+    volumes:
+      - ../:/go/src/${APP_NAME}
+    command: ['tail', '-f', '/dev/null']

@@ -1,16 +1,27 @@
-# syntax = docker/dockerfile:1-experimental
-FROM golang:1.15.8-alpine AS container
-ENV GO111MODULE=on \
-    CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
-WORKDIR /build
-RUN go mod init github.com/maciejkosiarski/lucy
-RUN go mod tidy
+ARG BASE_GO_IMAGE
+ARG BASE_TARGET_IMAGE
+
+FROM ${BASE_GO_IMAGE} AS build
+ARG APP_NAME
+WORKDIR /usr/local/go/src/${ALIAS}
+COPY ./ ./
 RUN go mod download
-COPY . .
-RUN go build -o main .
-WORKDIR /dist
-RUN cp /build/main .
-EXPOSE 3000
-CMD ["/dist/main"]
+ARG TARGETOS
+ARG TARGETARCH
+ARG CGO_ENABLED
+RUN env CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /out/${APP_NAME} ./
+
+# FROM basego AS unit-test
+# RUN --mount=target=. \
+#     --mount=type=cache,target=/root/.cache/go-build \
+#     go test -v .
+
+FROM ${BASE_TARGET_IMAGE}
+ARG APP_NAME
+COPY --from=build /out/${APP_NAME} /bin/${APP_NAME}
+COPY config /etc/${APP_NAME}/
+RUN mkdir -p /${APP_NAME} && \
+    chown -R nobody:nobody /etc/${APP_NAME} /${APP_NAME}
+
+USER nobody
+WORKDIR /${APP_NAME}

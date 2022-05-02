@@ -1,3 +1,5 @@
 installer.yaml
 forwarder.yaml
-lucy
+/bin/*
+
+!/**/.gitkeep
