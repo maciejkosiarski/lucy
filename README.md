@@ -13,13 +13,13 @@ make go
 ```
 close console [ctrl c]
 ```sh
-chmod +x ./bin/lucy [-c cluster_name(s)]
+chmod +x ./bin/lucy
 cp ./bin/lucy ~/bin/lucy
 cp ./forwarder.dist.yaml ~/bin/forwarder.yaml
 ```
 edit `~/bin/forwarder.yaml`
 
-example:
+run
 ```sh
 lucy                   # all clusters from forwarder.yaml
 lucy -c cluster1
