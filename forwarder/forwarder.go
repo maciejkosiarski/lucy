@@ -13,31 +13,64 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const portForwardsConfig = "forwarder.yaml"
+type Forwarder struct {
+	ConfigFileName string
+	ClusterNames   []string
+}
 
 type Command struct {
 	Cmd  string
 	Args []string
 }
 
-func ForwardPorts() {
-	commands := providePortForwardCommands()
+func (f *Forwarder) ForwardPorts(cluster_name []string) {
+	commands := f.providePortForwardCommands()
 	endedCommands := make(chan Command)
+	defer close(endedCommands)
 
-	for _, cmds := range commands {
-		for _, cmd := range cmds {
-			go runPortForward(cmd, endedCommands)
-			fmt.Printf("%v %v running...\n", cmd.Cmd, cmd.Args)
+	cmdsStarted := 0
+	clStarted := 0
+	for cn, cmds := range commands {
+		if f.ifClusterSelected(cn) {
+			clStarted++
+			for _, cmd := range cmds {
+				go f.runPortForward(cmd, endedCommands)
+				cmdsStarted++
+				fmt.Printf("[%s] %v %v running...\n", cn, cmd.Cmd, cmd.Args)
+			}
 		}
 	}
 
-	for cmd := range endedCommands {
-		go runPortForward(cmd, endedCommands)
-		fmt.Printf(formatSuccessLog(fmt.Sprintf("%v %v reforwarded!\n", cmd.Cmd, cmd.Args)))
+	if clStarted == 0 {
+		fmt.Printf("Cluster named: %s was not found\n", cluster_name)
+		return
 	}
+
+	if cmdsStarted == 0 {
+		fmt.Println("No commands to start!")
+		return
+	}
+
+	for cmd := range endedCommands {
+		go f.runPortForward(cmd, endedCommands)
+		fmt.Println(f.formatSuccessLog(fmt.Sprintf("%v %v reforwarded!", cmd.Cmd, cmd.Args)))
+	}
+
 }
 
-func runPortForward(cmd Command, endedCommands chan Command) {
+func (f *Forwarder) ifClusterSelected(cluster_name string) bool {
+	if len(f.ClusterNames) == 0 {
+		return true
+	}
+	for _, cn := range f.ClusterNames {
+		if cn == cluster_name {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *Forwarder) runPortForward(cmd Command, endedCommands chan Command) {
 	command := exec.Command(cmd.Cmd, cmd.Args...)
 
 	stdout, _ := command.StdoutPipe()
@@ -47,8 +80,8 @@ func runPortForward(cmd Command, endedCommands chan Command) {
 		log.Printf("Failed to start cmd: %v", err)
 	}
 
-	go listenOutput(stdout, "%s")
-	go listenOutput(stderr, "\033[38;5;196m%s\033[39;49m")
+	go f.listenOutput(stdout, "-> %s")
+	go f.listenOutput(stderr, "-> \033[38;5;196m%s\033[39;49m")
 
 	err := command.Wait()
 
@@ -59,7 +92,7 @@ func runPortForward(cmd Command, endedCommands chan Command) {
 	}
 }
 
-func listenOutput(ioReader io.ReadCloser, format string) {
+func (f *Forwarder) listenOutput(ioReader io.ReadCloser, format string) {
 	scanner := bufio.NewScanner(ioReader)
 	scanner.Split(bufio.ScanLines)
 
@@ -68,7 +101,7 @@ func listenOutput(ioReader io.ReadCloser, format string) {
 	}
 }
 
-func providePortForwardCommands() map[string][]Command {
+func (f *Forwarder) providePortForwardCommands() map[string][]Command {
 	exPath, err := os.Executable()
 
 	if err != nil {
@@ -77,26 +110,26 @@ func providePortForwardCommands() map[string][]Command {
 
 	exPath = filepath.Dir(exPath)
 
-	configFile, err := ioutil.ReadFile(exPath + "/" + portForwardsConfig)
+	configFile, err := ioutil.ReadFile(exPath + "/" + f.ConfigFileName)
 
 	if err != nil {
-		log.Fatal(formatErrorLog(err))
+		log.Fatal(f.formatErrorLog(err))
 	}
 
 	var commands map[string][]Command
 	err = yaml.Unmarshal([]byte(configFile), &commands)
 
 	if err != nil {
-		log.Fatal(formatErrorLog(err))
+		log.Fatal(f.formatErrorLog(err))
 	}
 
 	return commands
 }
 
-func formatSuccessLog(log string) string {
+func (f *Forwarder) formatSuccessLog(log string) string {
 	return fmt.Sprintf("\033[38;5;118m%s\033[39;49m", log)
 }
 
-func formatErrorLog(err error) string {
+func (f *Forwarder) formatErrorLog(err error) string {
 	return fmt.Sprintf("\033[38;5;196m%s\033[39;49m", err)
 }

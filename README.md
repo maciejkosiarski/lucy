@@ -18,5 +18,9 @@ cp ./bin/lucy ~/bin/lucy
 cp ./forwarder.dist.yaml ~/bin/forwarder.yaml
 ```
 edit `~/bin/forwarder.yaml`
-...run `lucy` and select 2 option (`2. Port forwards`)
 
+run
+```sh
+lucy                   # all clusters from forwarder.yaml
+lucy -c cluster1
+lucy -c cluster1,cluster2
