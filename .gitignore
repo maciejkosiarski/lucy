@@ -1,5 +1,7 @@
 installer.yaml
 forwarder.yaml
 /bin/*
+/.idea
+/.vscode
 
 !/**/.gitkeep
