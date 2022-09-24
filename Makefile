@@ -80,7 +80,12 @@ go: go-build ## Alias for 'go-build'
 
 go-build: ## Build dev application (go build)	
 	@go mod tidy
+	@if [ "${ARG}" = '' ]; then @env CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-X main.env=dev" -o bin/${APP_NAME} ./; fi
 	@env CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-X main.env=dev" -o bin/${APP_NAME} ./
+
+go-build-mac:
+	@go mod tidy
+	@env CGO_ENABLED=${CGO_ENABLED} GOOS=darwin GOARCH=${TARGETARCH} go build -ldflags "-X main.env=dev" -o bin/${APP_NAME} ./
 
 clean: ## Clean bin/
 	@rm -rf bin/${APP_NAME}
